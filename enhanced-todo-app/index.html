@@ -43,6 +43,36 @@
                                     <option value="">无关联目标</option>
                                 </select>
                             </div>
+                            <div class="option-group">
+                                <label for="task-priority">优先级：</label>
+                                <select id="task-priority">
+                                    <option value="low">🟢 低优先级</option>
+                                    <option value="medium" selected>🟡 中优先级</option>
+                                    <option value="high">🔴 高优先级</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- 重复任务选项 -->
+                        <div class="repeat-options">
+                            <div class="option-group">
+                                <label for="task-repeat">重复周期：</label>
+                                <select id="task-repeat">
+                                    <option value="none">不重复</option>
+                                    <option value="daily">每日</option>
+                                    <option value="weekly">每周</option>
+                                    <option value="monthly">每月</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                            <div class="option-group custom-repeat" style="display: none;">
+                                <label for="task-repeat-interval">间隔天数：</label>
+                                <input type="number" id="task-repeat-interval" min="1" max="365" value="1">
+                            </div>
+                            <div class="option-group repeat-end" style="display: none;">
+                                <label for="task-repeat-end">重复结束：</label>
+                                <input type="date" id="task-repeat-end">
+                            </div>
                         </div>
                         
                         <button type="submit" class="btn btn-primary">➕ 添加任务</button>
@@ -55,6 +85,13 @@
                     <button class="filter-btn" data-filter="completed">已完成</button>
                     <button class="filter-btn" data-filter="expired">已过期</button>
                     <button class="filter-btn" data-filter="failed">已失败</button>
+                    <div class="filter-divider">|</div>
+                    <button class="filter-btn priority-filter" data-filter="high">🔴 高优先级</button>
+                    <button class="filter-btn priority-filter" data-filter="medium">🟡 中优先级</button>
+                    <button class="filter-btn priority-filter" data-filter="low">🟢 低优先级</button>
+                    <div class="filter-divider">|</div>
+                    <button class="filter-btn repeat-filter" data-filter="repeating">🔄 重复任务</button>
+                    <button class="filter-btn repeat-filter" data-filter="single">📄 单次任务</button>
                 </div>
 
                 <div id="task-list" class="task-list">

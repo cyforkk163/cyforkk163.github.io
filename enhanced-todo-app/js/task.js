@@ -32,6 +32,40 @@ class TaskManager {
     }
 
     /**
+     * 计算下次到期日期
+     * @param {string} baseDate 基准日期
+     * @param {string} repeatType 重复类型
+     * @param {number} interval 间隔
+     * @returns {string|null} 下次到期日期
+     */
+    calculateNextDueDate(baseDate, repeatType, interval = 1) {
+        if (!baseDate || repeatType === 'none') return null;
+
+        const date = new Date(baseDate);
+        
+        switch (repeatType) {
+            case 'daily':
+                date.setDate(date.getDate() + interval);
+                break;
+            case 'weekly':
+                date.setDate(date.getDate() + (7 * interval));
+                break;
+            case 'monthly':
+                date.setMonth(date.getMonth() + interval);
+                break;
+            case 'custom':
+                date.setDate(date.getDate() + interval);
+                break;
+            default:
+                return null;
+        }
+
+        return date.toISOString();
+    }
+
+
+
+    /**
      * 创建新任务
      * @param {Object} taskData 任务数据
      * @returns {Object} 创建的任务对象
@@ -49,7 +83,15 @@ class TaskManager {
             createdAt: now,
             updatedAt: now,
             completedAt: null,
-            priority: taskData.priority || 'medium'
+            priority: taskData.priority || 'medium',
+            // 重复任务相关字段
+            repeatType: taskData.repeatType || 'none',
+            repeatInterval: taskData.repeatInterval || 1,
+            repeatEndDate: taskData.repeatEndDate || null,
+            isRepeatTemplate: (taskData.repeatType && taskData.repeatType !== 'none'),
+            parentTemplateId: taskData.parentTemplateId || null,
+            nextDueDate: (taskData.repeatType && taskData.repeatType !== 'none') ? 
+                this.calculateNextDueDate(taskData.deadline, taskData.repeatType, taskData.repeatInterval) : null
         };
 
         // 验证任务数据
@@ -74,8 +116,17 @@ class TaskManager {
     loadTasks() {
         this.tasks = storage.getTasks();
         this.checkExpiredTasks(); // 检查过期任务
+        this.updateTaskAvailability(); // 更新任务可用状态
         this.renderTasks();
         this.updateTaskCount();
+        this.updateTaskSelects(); // 更新选择器选项
+    }
+
+    /**
+     * 更新任务选择器选项
+     */
+    updateTaskSelects() {
+        // 依赖关系功能已移除
     }
 
     /**
@@ -130,6 +181,26 @@ class TaskManager {
      * @returns {boolean} 是否成功
      */
     deleteTask(taskId) {
+        const task = this.getTask(taskId);
+        if (!task) {
+            this.showNotification('任务不存在', 'error');
+            return false;
+        }
+
+        // 如果是重复任务模板，询问用户是否删除所有相关实例
+        if (task.isRepeatTemplate) {
+            const relatedTasks = this.tasks.filter(t => t.parentTemplateId === taskId);
+            if (relatedTasks.length > 0) {
+                const deleteAll = confirm(`这是一个重复任务模板，还有 ${relatedTasks.length} 个相关任务实例。是否删除所有相关任务？`);
+                if (deleteAll) {
+                    // 删除所有相关实例
+                    relatedTasks.forEach(relatedTask => {
+                        storage.deleteTask(relatedTask.id);
+                    });
+                }
+            }
+        }
+
         if (storage.deleteTask(taskId)) {
             // 清除相关定时器
             if (this.timers.has(taskId)) {
@@ -193,6 +264,16 @@ class TaskManager {
                 return this.tasks.filter(task => task.status === this.STATUS.EXPIRED);
             case 'failed':
                 return this.tasks.filter(task => task.status === this.STATUS.FAILED);
+            case 'high':
+                return this.tasks.filter(task => task.priority === 'high');
+            case 'medium':
+                return this.tasks.filter(task => task.priority === 'medium');
+            case 'low':
+                return this.tasks.filter(task => task.priority === 'low');
+            case 'repeating':
+                return this.tasks.filter(task => task.repeatType !== 'none');
+            case 'single':
+                return this.tasks.filter(task => task.repeatType === 'none');
             default:
                 return this.tasks;
         }
@@ -216,9 +297,74 @@ class TaskManager {
             }
         });
 
+        // 检查并生成重复任务
+        this.generateRepeatTasks();
+
         if (hasExpired) {
             this.showNotification('有任务已过期', 'warning');
         }
+    }
+
+    /**
+     * 生成重复任务
+     */
+    generateRepeatTasks() {
+        const now = new Date();
+        const templates = this.tasks.filter(task => 
+            task.isRepeatTemplate && 
+            task.repeatType !== 'none' &&
+            task.nextDueDate &&
+            new Date(task.nextDueDate) <= now
+        );
+
+        templates.forEach(template => {
+            this.createRepeatTaskInstance(template);
+        });
+    }
+
+    /**
+     * 创建重复任务实例
+     * @param {Object} template 重复任务模板
+     */
+    createRepeatTaskInstance(template) {
+        const now = new Date();
+        
+        // 检查是否已经超过结束日期
+        if (template.repeatEndDate && new Date(template.repeatEndDate) < now) {
+            // 停止重复任务
+            template.isRepeatTemplate = false;
+            template.nextDueDate = null;
+            storage.updateTask(template);
+            return;
+        }
+
+        // 创建新的任务实例
+        const newTask = {
+            ...template,
+            id: this.generateId(),
+            status: this.STATUS.PENDING,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+            completedAt: null,
+            deadline: template.nextDueDate,
+            isRepeatTemplate: false,
+            parentTemplateId: template.id,
+            nextDueDate: null
+        };
+
+        // 保存新任务实例
+        storage.saveTask(newTask);
+
+        // 更新模板的下次到期日期
+        template.nextDueDate = this.calculateNextDueDate(
+            template.nextDueDate, 
+            template.repeatType, 
+            template.repeatInterval
+        );
+        template.updatedAt = now.toISOString();
+        storage.updateTask(template);
+
+        this.showNotification(`已生成重复任务：${template.title}`, 'info');
     }
 
     /**
@@ -314,10 +460,19 @@ class TaskManager {
             return;
         }
 
-        // 按创建时间倒序排列
-        const sortedTasks = filteredTasks.sort((a, b) => 
-            new Date(b.createdAt) - new Date(a.createdAt)
-        );
+        // 按优先级和创建时间排序：高优先级在前，同优先级按创建时间倒序
+        const sortedTasks = filteredTasks.sort((a, b) => {
+            // 优先级权重：high = 3, medium = 2, low = 1
+            const priorityWeight = { high: 3, medium: 2, low: 1 };
+            const priorityDiff = priorityWeight[b.priority] - priorityWeight[a.priority];
+            
+            if (priorityDiff !== 0) {
+                return priorityDiff; // 按优先级排序
+            }
+            
+            // 同优先级按创建时间倒序
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
 
         taskList.innerHTML = sortedTasks.map(task => this.renderTaskItem(task)).join('');
 
@@ -336,10 +491,16 @@ class TaskManager {
             this.formatCountdown(new Date(task.deadline) - new Date()) : null;
 
         return `
-            <div class="task-item ${task.status}" data-task-id="${task.id}">
+            <div class="task-item ${task.status} priority-${task.priority}" data-task-id="${task.id}">
                 <div class="task-header">
-                    <h3 class="task-title">${this.escapeHtml(task.title)}</h3>
-                    <span class="task-status ${task.status}">${this.getStatusText(task.status)}</span>
+                    <h3 class="task-title">
+                        ${task.isRepeatTemplate ? '🔄 ' : ''}${task.parentTemplateId ? '🔗 ' : ''}${this.escapeHtml(task.title)}
+                    </h3>
+                    <div class="task-meta-badges">
+                        <span class="task-priority ${task.priority}">${this.getPriorityText(task.priority)}</span>
+                        ${task.repeatType !== 'none' ? `<span class="task-repeat ${task.isRepeatTemplate ? 'template' : ''}">${this.getRepeatText(task.repeatType, task.repeatInterval)}</span>` : ''}
+                        <span class="task-status ${task.status}">${this.getStatusText(task.status)}</span>
+                    </div>
                 </div>
                 
                 ${task.description ? `<p class="task-description">${this.escapeHtml(task.description)}</p>` : ''}
@@ -451,6 +612,37 @@ class TaskManager {
                     </select>
                 </div>
                 
+                <div class="form-group">
+                    <label for="edit-task-priority">优先级：</label>
+                    <select id="edit-task-priority">
+                        <option value="low" ${task.priority === 'low' ? 'selected' : ''}>🟢 低优先级</option>
+                        <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>🟡 中优先级</option>
+                        <option value="high" ${task.priority === 'high' ? 'selected' : ''}>🔴 高优先级</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-task-repeat">重复周期：</label>
+                    <select id="edit-task-repeat">
+                        <option value="none" ${task.repeatType === 'none' ? 'selected' : ''}>不重复</option>
+                        <option value="daily" ${task.repeatType === 'daily' ? 'selected' : ''}>每日</option>
+                        <option value="weekly" ${task.repeatType === 'weekly' ? 'selected' : ''}>每周</option>
+                        <option value="monthly" ${task.repeatType === 'monthly' ? 'selected' : ''}>每月</option>
+                        <option value="custom" ${task.repeatType === 'custom' ? 'selected' : ''}>自定义</option>
+                    </select>
+                </div>
+                
+                ${task.repeatType === 'custom' || task.repeatType !== 'none' ? `
+                    <div class="form-group">
+                        <label for="edit-task-repeat-interval">间隔天数：</label>
+                        <input type="number" id="edit-task-repeat-interval" min="1" max="365" value="${task.repeatInterval || 1}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-task-repeat-end">重复结束：</label>
+                        <input type="date" id="edit-task-repeat-end" value="${task.repeatEndDate ? task.repeatEndDate.split('T')[0] : ''}">
+                    </div>
+                ` : ''}
+                
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">保存更改</button>
                     <button type="button" class="btn btn-secondary" onclick="taskManager.closeModal()">取消</button>
@@ -474,6 +666,13 @@ class TaskManager {
         const description = document.getElementById('edit-task-description').value.trim();
         const deadline = document.getElementById('edit-task-deadline').value || null;
         const goalId = document.getElementById('edit-task-goal').value || null;
+        const priority = document.getElementById('edit-task-priority').value || 'medium';
+        
+        // 重复任务相关字段
+        const repeatType = document.getElementById('edit-task-repeat').value || 'none';
+        const repeatInterval = document.getElementById('edit-task-repeat-interval')?.value ? 
+            parseInt(document.getElementById('edit-task-repeat-interval').value) || 1 : 1;
+        const repeatEndDate = document.getElementById('edit-task-repeat-end')?.value || null;
 
         if (!title) {
             this.showNotification('请输入任务标题', 'error');
@@ -484,7 +683,13 @@ class TaskManager {
             title,
             description,
             deadline,
-            goalId
+            goalId,
+            priority,
+            repeatType,
+            repeatInterval,
+            repeatEndDate,
+            isRepeatTemplate: repeatType !== 'none',
+            nextDueDate: this.calculateNextDueDate(deadline, repeatType, repeatInterval)
         };
 
         if (this.updateTask(taskId, updates)) {
@@ -537,6 +742,36 @@ class TaskManager {
             [this.STATUS.FAILED]: '已失败'
         };
         return statusMap[status] || status;
+    }
+
+    /**
+     * 获取优先级文本
+     * @param {string} priority 优先级
+     * @returns {string} 优先级文本
+     */
+    getPriorityText(priority) {
+        const priorityMap = {
+            'high': '🔴 高优先级',
+            'medium': '🟡 中优先级',
+            'low': '🟢 低优先级'
+        };
+        return priorityMap[priority] || '🟡 中优先级';
+    }
+
+    /**
+     * 获取重复文本
+     * @param {string} repeatType 重复类型
+     * @param {number} interval 间隔
+     * @returns {string} 重复文本
+     */
+    getRepeatText(repeatType, interval = 1) {
+        const repeatMap = {
+            'daily': interval === 1 ? '🔄 每日' : `🔄 每${interval}天`,
+            'weekly': interval === 1 ? '🔄 每周' : `🔄 每${interval}周`, 
+            'monthly': interval === 1 ? '🔄 每月' : `🔄 每${interval}月`,
+            'custom': `🔄 每${interval}天`
+        };
+        return repeatMap[repeatType] || '🔄 重复';
     }
 
     /**
@@ -644,6 +879,12 @@ class TaskManager {
             });
         });
 
+        // 重复选项动态控制
+        const repeatSelect = document.getElementById('task-repeat');
+        if (repeatSelect) {
+            repeatSelect.addEventListener('change', this.handleRepeatChange.bind(this));
+        }
+
         // 模态框关闭
         const modal = document.getElementById('edit-modal');
         const closeBtn = modal?.querySelector('.close');
@@ -662,6 +903,27 @@ class TaskManager {
     }
 
     /**
+     * 处理重复选项变化
+     * @param {Event} event 变化事件
+     */
+    handleRepeatChange(event) {
+        const repeatType = event.target.value;
+        const customRepeat = document.querySelector('.custom-repeat');
+        const repeatEnd = document.querySelector('.repeat-end');
+
+        if (repeatType === 'custom') {
+            customRepeat.style.display = 'flex';
+            repeatEnd.style.display = 'flex';
+        } else if (repeatType !== 'none') {
+            customRepeat.style.display = 'none';
+            repeatEnd.style.display = 'flex';
+        } else {
+            customRepeat.style.display = 'none';
+            repeatEnd.style.display = 'none';
+        }
+    }
+
+    /**
      * 处理任务表单提交
      * @param {Event} event 提交事件
      */
@@ -672,6 +934,13 @@ class TaskManager {
         const description = document.getElementById('task-description').value.trim();
         const deadline = document.getElementById('task-deadline').value || null;
         const goalId = document.getElementById('task-goal').value || null;
+        const priority = document.getElementById('task-priority').value || 'medium';
+        
+        // 重复任务相关字段
+        const repeatType = document.getElementById('task-repeat').value || 'none';
+        const repeatInterval = repeatType === 'custom' ? 
+            parseInt(document.getElementById('task-repeat-interval').value) || 1 : 1;
+        const repeatEndDate = document.getElementById('task-repeat-end').value || null;
 
         if (!title) {
             this.showNotification('请输入任务标题', 'error');
@@ -683,11 +952,21 @@ class TaskManager {
                 title,
                 description,
                 deadline,
-                goalId
+                goalId,
+                priority,
+                repeatType,
+                repeatInterval,
+                repeatEndDate
             });
 
             // 重置表单
             event.target.reset();
+            // 重置优先级为默认值
+            document.getElementById('task-priority').value = 'medium';
+            // 重置重复选项显示
+            this.handleRepeatChange({ target: { value: 'none' } });
+            // 重新加载选项列表
+            this.updateTaskSelects();
         } catch (error) {
             this.showNotification(error.message, 'error');
         }

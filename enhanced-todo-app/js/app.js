@@ -584,6 +584,48 @@ window.app = app;
 window.exportData = () => app.exportData();
 window.clearAllData = () => app.clearAllData();
 
+// 重复任务管理函数
+window.generateRepeatTasks = () => {
+    if (window.taskManager) {
+        taskManager.generateRepeatTasks();
+        taskManager.loadTasks();
+        app.showNotification('手动检查重复任务完成', 'info');
+    }
+};
+
+// 测试重复任务的快速功能
+window.testRepeatTasks = () => {
+    if (window.taskManager) {
+        console.log('=== 重复任务测试 ===');
+        const repeatTasks = taskManager.tasks.filter(task => task.isRepeatTemplate);
+        console.log('重复任务模板数量:', repeatTasks.length);
+        repeatTasks.forEach(task => {
+            console.log(`模板: ${task.title}, 下次到期: ${task.nextDueDate}`);
+        });
+        
+        const instances = taskManager.tasks.filter(task => task.parentTemplateId);
+        console.log('重复任务实例数量:', instances.length);
+        
+        app.showNotification(`重复任务模板: ${repeatTasks.length}个，实例: ${instances.length}个`, 'info');
+    }
+};
+
+// 手动推进时间测试（用于测试自动生成）
+window.simulateTimeForward = () => {
+    if (window.taskManager) {
+        const templates = taskManager.tasks.filter(task => task.isRepeatTemplate && task.nextDueDate);
+        templates.forEach(template => {
+            // 将下次到期时间设置为当前时间，触发自动生成
+            template.nextDueDate = new Date().toISOString();
+            storage.updateTask(template);
+        });
+        taskManager.loadTasks();
+        taskManager.generateRepeatTasks();
+        taskManager.loadTasks();
+        app.showNotification('已模拟时间推进，检查是否生成新的重复任务实例', 'success');
+    }
+};
+
 // 文件导入处理
 window.handleFileImport = (event) => {
     const file = event.target.files[0];
