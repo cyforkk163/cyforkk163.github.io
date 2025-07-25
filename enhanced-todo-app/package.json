@@ -1,0 +1,32 @@
+{
+  "name": "enhanced-todo-app",
+  "version": "1.0.0",
+  "description": "增强版待办事项应用，支持时间限制和长期目标管理",
+  "main": "index.html",
+  "scripts": {
+    "start": "live-server --port=3000 --open=/",
+    "dev": "live-server --port=3000 --open=/ --watch=css,js",
+    "build": "echo 'Build completed'",
+    "test": "echo 'Tests not implemented yet'"
+  },
+  "keywords": [
+    "todo",
+    "productivity",
+    "task-management",
+    "goals",
+    "time-tracking"
+  ],
+  "author": "Developer",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/enhanced-todo-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/enhanced-todo-app/issues"
+  },
+  "homepage": "https://github.com/your-username/enhanced-todo-app#readme"
+}

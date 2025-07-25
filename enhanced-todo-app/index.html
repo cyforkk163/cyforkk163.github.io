@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强版待办事项</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>📋 智能待办事项</h1>
+            <div class="header-stats">
+                <span id="task-count">0 个任务</span>
+                <span id="goal-count">0 个目标</span>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- 导航标签页 -->
+            <nav class="app-nav">
+                <button class="nav-btn active" data-tab="tasks">任务管理</button>
+                <button class="nav-btn" data-tab="goals">目标设定</button>
+                <button class="nav-btn" data-tab="statistics">统计报告</button>
+            </nav>
+
+            <!-- 任务管理页面 -->
+            <section id="tasks-section" class="tab-content active">
+                <div class="task-input-area">
+                    <form id="task-form" class="task-form">
+                        <input type="text" id="task-title" placeholder="输入新任务..." required>
+                        <textarea id="task-description" placeholder="任务描述（可选）" rows="2"></textarea>
+                        
+                        <div class="task-options">
+                            <div class="option-group">
+                                <label for="task-deadline">截止时间：</label>
+                                <input type="datetime-local" id="task-deadline">
+                            </div>
+                            <div class="option-group">
+                                <label for="task-goal">关联目标：</label>
+                                <select id="task-goal">
+                                    <option value="">无关联目标</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">➕ 添加任务</button>
+                    </form>
+                </div>
+
+                <div class="task-filters">
+                    <button class="filter-btn active" data-filter="all">全部</button>
+                    <button class="filter-btn" data-filter="pending">待完成</button>
+                    <button class="filter-btn" data-filter="completed">已完成</button>
+                    <button class="filter-btn" data-filter="expired">已过期</button>
+                    <button class="filter-btn" data-filter="failed">已失败</button>
+                </div>
+
+                <div id="task-list" class="task-list">
+                    <!-- 任务项将动态添加到这里 -->
+                </div>
+            </section>
+
+            <!-- 目标管理页面 -->
+            <section id="goals-section" class="tab-content">
+                <div class="goal-input-area">
+                    <form id="goal-form" class="goal-form">
+                        <input type="text" id="goal-title" placeholder="输入新目标..." required>
+                        <textarea id="goal-description" placeholder="目标描述" rows="3"></textarea>
+                        
+                        <div class="goal-options">
+                            <label for="goal-target-date">目标完成日期：</label>
+                            <input type="date" id="goal-target-date">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">🎯 创建目标</button>
+                    </form>
+                </div>
+
+                <div id="goal-list" class="goal-list">
+                    <!-- 目标项将动态添加到这里 -->
+                </div>
+            </section>
+
+            <!-- 统计报告页面 -->
+            <section id="statistics-section" class="tab-content">
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <h3>今日完成</h3>
+                        <span id="today-completed">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>本周完成</h3>
+                        <span id="week-completed">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>目标进度</h3>
+                        <span id="goals-progress">0%</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 模态框用于编辑 -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">编辑</h2>
+            <div id="modal-body">
+                <!-- 编辑表单将动态插入 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知容器 -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/task.js"></script>
+    <script src="js/goal.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

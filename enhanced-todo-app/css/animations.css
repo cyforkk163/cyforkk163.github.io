@@ -1,0 +1,271 @@
+/* 动画效果 */
+
+/* 淡入淡出动画 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+/* 滑入动画 */
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 弹出动画 */
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    80% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 摇摆动画 */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* 脉冲动画 */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
+
+/* 进度条动画 */
+@keyframes progressAnimation {
+    0% {
+        width: 0%;
+    }
+    100% {
+        width: var(--progress-width);
+    }
+}
+
+/* 旋转动画 */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 应用动画的元素 */
+.task-item {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.task-item.removing {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+.goal-item {
+    animation: slideIn 0.5s ease-out;
+}
+
+.notification {
+    animation: popIn 0.3s ease-out;
+}
+
+.notification.removing {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+.modal.show {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    animation: popIn 0.3s ease-out;
+}
+
+/* 按钮悬停效果 */
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transition: width 0.6s, height 0.6s, top 0.6s, left 0.6s;
+    transform: translate(-50%, -50%);
+}
+
+.btn:active::before {
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    left: 50%;
+}
+
+/* 任务完成动画 */
+.task-item.completing {
+    animation: pulse 0.6s ease-out;
+}
+
+/* 过期任务闪烁提醒 */
+.task-item.expired .task-countdown {
+    animation: pulse 2s infinite;
+}
+
+/* 进度条填充动画 */
+.goal-progress-bar {
+    animation: progressAnimation 1s ease-out;
+}
+
+/* 加载动画 */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* 卡片悬停动画 */
+.task-item,
+.goal-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.task-item:hover,
+.goal-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* 标签切换动画 */
+.tab-content {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.tab-content.active {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* 表单验证错误动画 */
+.form-error {
+    animation: shake 0.5s ease-in-out;
+    border-color: var(--danger-color) !important;
+}
+
+/* 成功提示动画 */
+.success-feedback {
+    animation: popIn 0.5s ease-out;
+    background: var(--success-color);
+    color: white;
+}
+
+/* 数字变化动画 */
+.counter {
+    transition: all 0.3s ease-out;
+}
+
+.counter.updating {
+    transform: scale(1.2);
+    color: var(--primary-color);
+}
+
+/* 删除确认动画 */
+.delete-confirm {
+    animation: shake 0.3s ease-in-out;
+}
+
+/* 拖拽动画 */
+.dragging {
+    opacity: 0.7;
+    transform: rotate(5deg);
+    z-index: 999;
+}
+
+.drag-over {
+    border: 2px dashed var(--primary-color);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* 搜索高亮动画 */
+.highlight {
+    background: yellow;
+    animation: pulse 1s ease-out;
+}
+
+/* 时间倒计时紧急状态动画 */
+.urgent-countdown {
+    animation: pulse 1s infinite;
+    color: var(--danger-color) !important;
+}
+
+/* 响应式动画调整 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* 媒体查询：移动设备动画优化 */
+@media (max-width: 768px) {
+    .task-item,
+    .goal-item {
+        transition: none;
+    }
+    
+    .task-item:hover,
+    .goal-item:hover {
+        transform: none;
+        box-shadow: var(--shadow);
+    }
+}
