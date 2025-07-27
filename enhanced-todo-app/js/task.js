@@ -18,7 +18,14 @@ class TaskManager {
         };
 
         // 初始化
-        this.loadTasks();
+        this.init();
+    }
+
+    /**
+     * 异步初始化
+     */
+    async init() {
+        await this.loadTasks();
         this.setupEventListeners();
         this.startPeriodicCheck();
     }
@@ -70,7 +77,7 @@ class TaskManager {
      * @param {Object} taskData 任务数据
      * @returns {Object} 创建的任务对象
      */
-    createTask(taskData) {
+    async createTask(taskData) {
         const now = new Date().toISOString();
         
         const task = {
@@ -100,8 +107,8 @@ class TaskManager {
         }
 
         // 保存到存储
-        if (storage.saveTask(task)) {
-            this.loadTasks(); // 重新加载任务列表
+        if (await storage.saveTask(task)) {
+            await this.loadTasks(); // 重新加载任务列表
             this.showNotification('任务创建成功', 'success');
             this.updateStatistics();
             return task;
@@ -113,10 +120,10 @@ class TaskManager {
     /**
      * 加载所有任务
      */
-    loadTasks() {
-        this.tasks = storage.getTasks();
+    async loadTasks() {
+        this.tasks = await storage.getTasks();
         this.checkExpiredTasks(); // 检查过期任务
-        this.updateTaskAvailability(); // 更新任务可用状态
+        // 移除不存在的方法调用
         this.renderTasks();
         this.updateTaskCount();
         this.updateTaskSelects(); // 更新选择器选项
@@ -144,7 +151,7 @@ class TaskManager {
      * @param {Object} updates 更新数据
      * @returns {boolean} 是否成功
      */
-    updateTask(taskId, updates) {
+    async updateTask(taskId, updates) {
         const task = this.getTask(taskId);
         if (!task) {
             this.showNotification('任务不存在', 'error');
@@ -165,8 +172,8 @@ class TaskManager {
         }
 
         // 保存更新
-        if (storage.saveTask(updatedTask)) {
-            this.loadTasks();
+        if (await storage.saveTask(updatedTask)) {
+            await this.loadTasks();
             this.showNotification('任务更新成功', 'success');
             return true;
         } else {

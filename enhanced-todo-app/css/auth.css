@@ -1,0 +1,297 @@
+/**
+ * 登录注册界面样式
+ */
+
+/* 登录注册容器 */
+.auth-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.auth-wrapper {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    animation: slideUp 0.6s ease-out;
+}
+
+/* 头部样式 */
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-header h1 {
+    color: #333;
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.auth-header p {
+    color: #666;
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* 表单样式 */
+.auth-form {
+    display: none;
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+.auth-form.active {
+    display: block;
+}
+
+.auth-form h2 {
+    color: #333;
+    margin: 0 0 25px 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* 输入组样式 */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+.input-group input:invalid {
+    border-color: #e74c3c;
+}
+
+.input-group input:valid {
+    border-color: #27ae60;
+}
+
+/* 登录注册按钮 */
+.auth-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.auth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.auth-btn:active {
+    transform: translateY(0);
+}
+
+/* 切换链接 */
+.auth-switch {
+    text-align: center;
+    margin-top: 20px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.auth-switch a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.auth-switch a:hover {
+    color: #764ba2;
+}
+
+/* 主应用头部的用户信息样式 */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-left: auto;
+}
+
+.user-info span {
+    color: #666;
+    font-weight: 500;
+}
+
+.user-info .btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .auth-wrapper {
+        margin: 20px;
+        padding: 30px 25px;
+        max-width: none;
+    }
+    
+    .auth-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .auth-form h2 {
+        font-size: 1.3rem;
+    }
+    
+    .user-info {
+        flex-direction: column;
+        gap: 10px;
+        margin-left: 0;
+        margin-top: 10px;
+    }
+    
+    .header-stats {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+/* 动画 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 错误状态样式 */
+.input-group.error input {
+    border-color: #e74c3c;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* 加载状态 */
+.auth-btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.auth-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    margin-left: -10px;
+    margin-top: -10px;
+    border: 2px solid #ffffff30;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 成功提示 */
+.auth-success {
+    background: #27ae60;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 主应用头部样式调整 */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.header-stats span {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    color: white;
+}

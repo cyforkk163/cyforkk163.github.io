@@ -1,6 +1,7 @@
 /**
  * 数据存储管理模块
  * 负责localStorage的封装和数据管理
+ * 支持MySQL后端存储
  */
 
 class StorageManager {
@@ -12,8 +13,73 @@ class StorageManager {
             STATISTICS: 'enhanced_todo_statistics'
         };
         
+        // API客户端
+        this.apiClient = window.apiClient;
+        // 如果API配置不可用，强制使用localStorage
+        this.useLocalStorage = !this.apiClient || !this.apiClient.baseURL;
+        
         // 初始化存储
         this.initializeStorage();
+        
+        // 检查后端连接状态
+        if (!this.useLocalStorage) {
+            this.checkBackendConnection();
+        } else {
+            console.log('📁 使用localStorage模式');
+        }
+    }
+
+    /**
+     * 检查后端连接状态
+     */
+    async checkBackendConnection() {
+        if (this.apiClient) {
+            try {
+                // 使用统计API测试连接，它对所有用户都可用
+                this.useLocalStorage = !(await this.apiClient.checkConnection());
+                if (!this.useLocalStorage) {
+                    console.log('✅ 已连接到MySQL后端');
+                    // 注意：不要在这里自动迁移数据，因为用户可能还没登录
+                }
+            } catch (error) {
+                console.log('⚠️ 后端连接失败，使用localStorage');
+                this.useLocalStorage = true;
+            }
+        }
+    }
+
+    /**
+     * 迁移localStorage数据到后端
+     */
+    async migrateToBackend() {
+        try {
+            const localData = this.exportLocalData();
+            if (localData.tasks.length > 0 || localData.goals.length > 0) {
+                const confirmMigration = confirm('检测到本地数据，是否迁移到数据库？');
+                if (confirmMigration) {
+                    await this.apiClient.importData(localData);
+                    console.log('✅ 数据迁移完成');
+                    // 清空localStorage（可选）
+                    // this.clearAll();
+                }
+            }
+        } catch (error) {
+            console.error('❌ 数据迁移失败:', error);
+        }
+    }
+
+    /**
+     * 导出localStorage数据
+     */
+    exportLocalData() {
+        return {
+            tasks: this.getItem(this.STORAGE_KEYS.TASKS, []),
+            goals: this.getItem(this.STORAGE_KEYS.GOALS, []),
+            settings: this.getItem(this.STORAGE_KEYS.SETTINGS, {}),
+            statistics: this.getItem(this.STORAGE_KEYS.STATISTICS, {}),
+            exportDate: new Date().toISOString(),
+            version: '1.0.0'
+        };
     }
 
     /**
@@ -115,8 +181,20 @@ class StorageManager {
      * 获取所有任务
      * @returns {Array} 任务列表
      */
-    getTasks() {
-        return this.getItem(this.STORAGE_KEYS.TASKS, []);
+    async getTasks() {
+        if (this.useLocalStorage) {
+            return this.getItem(this.STORAGE_KEYS.TASKS, []);
+        } else {
+            try {
+                const backendTasks = await this.apiClient.getTasks();
+                // 转换后端格式到前端格式
+                return backendTasks.map(task => this.convertFromBackendFormat(task));
+            } catch (error) {
+                console.error('后端获取任务失败，回退到localStorage:', error);
+                this.useLocalStorage = true;
+                return this.getItem(this.STORAGE_KEYS.TASKS, []);
+            }
+        }
     }
 
     /**
@@ -124,9 +202,21 @@ class StorageManager {
      * @param {string} taskId 任务ID
      * @returns {Object|null} 任务对象
      */
-    getTaskById(taskId) {
-        const tasks = this.getTasks();
-        return tasks.find(task => task.id === taskId) || null;
+    async getTaskById(taskId) {
+        if (this.useLocalStorage) {
+            const tasks = this.getItem(this.STORAGE_KEYS.TASKS, []);
+            return tasks.find(task => task.id === taskId) || null;
+        } else {
+            try {
+                const backendTask = await this.apiClient.getTask(taskId);
+                return backendTask ? this.convertFromBackendFormat(backendTask) : null;
+            } catch (error) {
+                console.error('后端获取任务失败，回退到localStorage:', error);
+                this.useLocalStorage = true;
+                const tasks = this.getItem(this.STORAGE_KEYS.TASKS, []);
+                return tasks.find(task => task.id === taskId) || null;
+            }
+        }
     }
 
     /**
@@ -134,25 +224,98 @@ class StorageManager {
      * @param {Object} task 任务对象
      * @returns {boolean} 是否成功
      */
-    saveTask(task) {
+    async saveTask(task) {
         try {
-            const tasks = this.getTasks();
-            const existingIndex = tasks.findIndex(t => t.id === task.id);
-            
-            if (existingIndex !== -1) {
-                // 更新现有任务
-                tasks[existingIndex] = { ...tasks[existingIndex], ...task };
+            if (this.useLocalStorage) {
+                const tasks = this.getItem(this.STORAGE_KEYS.TASKS, []);
+                const existingIndex = tasks.findIndex(t => t.id === task.id);
+                
+                if (existingIndex !== -1) {
+                    // 更新现有任务
+                    tasks[existingIndex] = { ...tasks[existingIndex], ...task };
+                } else {
+                    // 添加新任务
+                    tasks.push(task);
+                    this.incrementStatistic('totalTasksCreated');
+                }
+                
+                return this.setItem(this.STORAGE_KEYS.TASKS, tasks);
             } else {
-                // 添加新任务
-                tasks.push(task);
-                this.incrementStatistic('totalTasksCreated');
+                // 使用API保存
+                const existingTasks = await this.apiClient.getTasks();
+                const existingTask = existingTasks.find(t => t.id === task.id);
+                
+                if (existingTask) {
+                    // 更新任务 - 转换字段名
+                    const updateData = this.convertToBackendFormat(task);
+                    await this.apiClient.updateTask(task.id, updateData);
+                } else {
+                    // 创建新任务 - 转换字段名
+                    const taskData = this.convertToBackendFormat(task);
+                    await this.apiClient.createTask(taskData);
+                }
+                return true;
             }
-            
-            return this.setItem(this.STORAGE_KEYS.TASKS, tasks);
         } catch (error) {
             console.error('保存任务失败:', error);
+            if (!this.useLocalStorage) {
+                // API失败，回退到localStorage
+                console.log('回退到localStorage保存');
+                this.useLocalStorage = true;
+                return this.saveTask(task);
+            }
             return false;
         }
+    }
+
+    /**
+     * 转换任务数据格式到后端格式
+     * @param {Object} task 前端任务对象
+     * @returns {Object} 后端任务对象
+     */
+    convertToBackendFormat(task) {
+        return {
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            deadline: task.deadline,
+            status: task.status,
+            priority: task.priority,
+            goal_id: task.goalId,
+            is_repeat_template: task.isRepeatTemplate,
+            parent_task_id: task.parentTemplateId, // Fixed field name
+            repeat_type: task.repeatType,
+            repeat_interval: task.repeatInterval,
+            repeat_end_date: task.repeatEndDate,
+            completed_at: task.completedAt
+        };
+    }
+
+    /**
+     * 转换任务数据格式从后端格式
+     * @param {Object} task 后端任务对象
+     * @returns {Object} 前端任务对象
+     */
+    convertFromBackendFormat(task) {
+        return {
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            deadline: task.deadline,
+            status: task.status || 'pending',
+            priority: task.priority || 'medium',
+            goalId: task.goal_id,
+            isRepeatTemplate: !!task.is_repeat_template,
+            parentTemplateId: task.parent_task_id,
+            repeatType: task.repeat_type || 'none',
+            repeatInterval: task.repeat_interval || 1,
+            repeatEndDate: task.repeat_end_date,
+            createdAt: task.created_at,
+            updatedAt: task.updated_at,
+            completedAt: task.completed_at,
+            // Add missing fields that frontend expects
+            nextDueDate: null // This would need to be calculated if needed
+        };
     }
 
     /**
@@ -160,13 +323,23 @@ class StorageManager {
      * @param {string} taskId 任务ID
      * @returns {boolean} 是否成功
      */
-    deleteTask(taskId) {
+    async deleteTask(taskId) {
         try {
-            const tasks = this.getTasks();
-            const filteredTasks = tasks.filter(task => task.id !== taskId);
-            return this.setItem(this.STORAGE_KEYS.TASKS, filteredTasks);
+            if (this.useLocalStorage) {
+                const tasks = this.getItem(this.STORAGE_KEYS.TASKS, []);
+                const filteredTasks = tasks.filter(task => task.id !== taskId);
+                return this.setItem(this.STORAGE_KEYS.TASKS, filteredTasks);
+            } else {
+                await this.apiClient.deleteTask(taskId);
+                return true;
+            }
         } catch (error) {
             console.error('删除任务失败:', error);
+            if (!this.useLocalStorage) {
+                console.log('回退到localStorage删除');
+                this.useLocalStorage = true;
+                return this.deleteTask(taskId);
+            }
             return false;
         }
     }
@@ -176,8 +349,21 @@ class StorageManager {
      * @param {Array} tasks 任务列表
      * @returns {boolean} 是否成功
      */
-    saveTasks(tasks) {
-        return this.setItem(this.STORAGE_KEYS.TASKS, tasks);
+    async saveTasks(tasks) {
+        if (this.useLocalStorage) {
+            return this.setItem(this.STORAGE_KEYS.TASKS, tasks);
+        } else {
+            try {
+                // 逐个保存任务（简化实现）
+                for (const task of tasks) {
+                    await this.saveTask(task);
+                }
+                return true;
+            } catch (error) {
+                console.error('批量保存任务失败:', error);
+                return false;
+            }
+        }
     }
 
     // ========== 目标相关操作 ==========
@@ -231,17 +417,17 @@ class StorageManager {
      * @param {string} goalId 目标ID
      * @returns {boolean} 是否成功
      */
-    deleteGoal(goalId) {
+    async deleteGoal(goalId) {
         try {
             const goals = this.getGoals();
             const filteredGoals = goals.filter(goal => goal.id !== goalId);
             
             // 同时删除关联的任务或更新任务的goalId
-            const tasks = this.getTasks();
+            const tasks = await this.getTasks();
             const updatedTasks = tasks.map(task => 
                 task.goalId === goalId ? { ...task, goalId: null } : task
             );
-            this.saveTasks(updatedTasks);
+            await this.saveTasks(updatedTasks);
             
             return this.setItem(this.STORAGE_KEYS.GOALS, filteredGoals);
         } catch (error) {
@@ -310,8 +496,8 @@ class StorageManager {
      * @param {string} status 任务状态
      * @returns {Array} 筛选后的任务列表
      */
-    getTasksByStatus(status) {
-        const tasks = this.getTasks();
+    async getTasksByStatus(status) {
+        const tasks = await this.getTasks();
         return tasks.filter(task => task.status === status);
     }
 
@@ -320,8 +506,8 @@ class StorageManager {
      * @param {string} goalId 目标ID
      * @returns {Array} 关联任务列表
      */
-    getTasksByGoal(goalId) {
-        const tasks = this.getTasks();
+    async getTasksByGoal(goalId) {
+        const tasks = await this.getTasks();
         return tasks.filter(task => task.goalId === goalId);
     }
 
@@ -329,8 +515,8 @@ class StorageManager {
      * 获取今日任务
      * @returns {Array} 今日任务列表
      */
-    getTodayTasks() {
-        const tasks = this.getTasks();
+    async getTodayTasks() {
+        const tasks = await this.getTasks();
         const today = new Date().toDateString();
         
         return tasks.filter(task => {
@@ -344,8 +530,8 @@ class StorageManager {
      * 获取过期任务
      * @returns {Array} 过期任务列表
      */
-    getExpiredTasks() {
-        const tasks = this.getTasks();
+    async getExpiredTasks() {
+        const tasks = await this.getTasks();
         const now = new Date();
         
         return tasks.filter(task => {
@@ -382,9 +568,9 @@ class StorageManager {
      * 导出所有数据
      * @returns {Object} 所有应用数据
      */
-    exportData() {
+    async exportData() {
         return {
-            tasks: this.getTasks(),
+            tasks: await this.getTasks(),
             goals: this.getGoals(),
             settings: this.getSettings(),
             statistics: this.getStatistics(),
@@ -415,8 +601,8 @@ class StorageManager {
      * 获取存储使用情况
      * @returns {Object} 存储信息
      */
-    getStorageInfo() {
-        const data = this.exportData();
+    async getStorageInfo() {
+        const data = await this.exportData();
         const dataSize = JSON.stringify(data).length;
         
         return {
