@@ -252,7 +252,7 @@ app.post('/api/auth/logout', (req, res) => {
 // ================== 任务相关 API ==================
 
 // 获取所有任务
-app.get('/api/tasks', optionalAuth, async (req, res) => {
+app.get('/api/tasks', authenticateToken, async (req, res) => {
     try {
         const { status, priority, goal_id, is_template } = req.query;
         let sql = 'SELECT * FROM tasks WHERE user_id = ?';
@@ -286,7 +286,7 @@ app.get('/api/tasks', optionalAuth, async (req, res) => {
 });
 
 // 根据ID获取任务
-app.get('/api/tasks/:id', optionalAuth, async (req, res) => {
+app.get('/api/tasks/:id', authenticateToken, async (req, res) => {
     try {
         const [rows] = await pool.execute(
             'SELECT * FROM tasks WHERE id = ? AND user_id = ?',
@@ -305,7 +305,7 @@ app.get('/api/tasks/:id', optionalAuth, async (req, res) => {
 });
 
 // 创建任务
-app.post('/api/tasks', optionalAuth, async (req, res) => {
+app.post('/api/tasks', authenticateToken, async (req, res) => {
     try {
         const { 
             id, title, description, deadline, goal_id, priority,
@@ -346,7 +346,7 @@ app.post('/api/tasks', optionalAuth, async (req, res) => {
 });
 
 // 更新任务
-app.put('/api/tasks/:id', optionalAuth, async (req, res) => {
+app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     try {
         const taskId = req.params.id;
         const updates = req.body;
@@ -395,7 +395,7 @@ app.put('/api/tasks/:id', optionalAuth, async (req, res) => {
 });
 
 // 删除任务
-app.delete('/api/tasks/:id', optionalAuth, async (req, res) => {
+app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
     try {
         const [result] = await pool.execute(
             'DELETE FROM tasks WHERE id = ? AND user_id = ?',
