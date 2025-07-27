@@ -19,10 +19,13 @@ app.use(cors({
         'http://localhost:3000', 
         'file://', 
         'null',
-        'https://cyforkk163.github.io/', // 👈 替换为你的GitHub Pages地址
-        'https://0981688c9428.ngrok-free.app'   // 👈 你的ngrok地址
+        'https://cyforkk163.github.io', // GitHub Pages地址
+        'https://0981688c9428.ngrok-free.app'   // ngrok地址
     ],
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+    optionsSuccessStatus: 200 // 一些老版本浏览器需要
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

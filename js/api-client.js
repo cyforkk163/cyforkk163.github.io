@@ -40,6 +40,7 @@ class ApiClient {
         const config = {
             headers: {
                 'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true', // 跳过ngrok浏览器警告
                 ...options.headers
             },
             ...options
