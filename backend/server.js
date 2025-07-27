@@ -19,8 +19,8 @@ app.use(cors({
         'http://localhost:3000', 
         'file://', 
         'null',
-        'https://your-username.github.io', // 👈 替换为你的GitHub Pages地址
-        'https://ccc3f9ca24d6.ngrok-free.app'   // 👈 你的ngrok地址
+        'https://cyforkk163.github.io/', // 👈 替换为你的GitHub Pages地址
+        'https://0981688c9428.ngrok-free.app'   // 👈 你的ngrok地址
     ],
     credentials: true
 }));
