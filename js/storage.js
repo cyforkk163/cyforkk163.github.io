@@ -69,6 +69,83 @@ class StorageManager {
     }
 
     /**
+     * 从数据库同步数据到本地
+     * @param {boolean} showConfirm 是否显示确认对话框
+     * @returns {Promise<boolean>} 同步是否成功
+     */
+    async syncFromDatabase(showConfirm = true) {
+        if (this.useLocalStorage) {
+            throw new Error('当前使用本地存储模式，无法从数据库同步');
+        }
+
+        try {
+            // 检查是否有本地数据
+            const localData = this.exportLocalData();
+            const hasLocalData = localData.tasks.length > 0 || localData.goals.length > 0;
+
+            if (hasLocalData && showConfirm) {
+                const confirmSync = confirm(
+                    '同步将会用数据库数据覆盖本地数据。\n' +
+                    `本地数据：${localData.tasks.length} 个任务，${localData.goals.length} 个目标\n\n` +
+                    '确定要继续同步吗？'
+                );
+                if (!confirmSync) {
+                    return false;
+                }
+            }
+
+            // 从数据库获取数据
+            console.log('🔄 开始从数据库同步数据...');
+            const [tasks, goals] = await Promise.all([
+                this.apiClient.getTasks(),
+                this.apiClient.getGoals()
+            ]);
+
+            // 清空本地存储
+            this.clearAll();
+
+            // 保存数据库数据到本地
+            if (tasks && tasks.length > 0) {
+                localStorage.setItem(this.STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+            }
+            if (goals && goals.length > 0) {
+                localStorage.setItem(this.STORAGE_KEYS.GOALS, JSON.stringify(goals));
+            }
+
+            console.log(`✅ 数据同步完成：${tasks?.length || 0} 个任务，${goals?.length || 0} 个目标`);
+            return true;
+
+        } catch (error) {
+            console.error('❌ 数据同步失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 强制重新连接后端并同步数据
+     */
+    async forceReconnect() {
+        console.log('🔄 强制重新连接后端...');
+        
+        // 重新检查连接状态
+        await this.checkBackendConnection();
+        
+        if (!this.useLocalStorage) {
+            console.log('✅ 后端连接成功，开始同步数据');
+            try {
+                await this.syncFromDatabase(false); // 静默同步，不显示确认对话框
+                return true;
+            } catch (error) {
+                console.error('❌ 同步失败:', error);
+                return false;
+            }
+        } else {
+            console.log('⚠️ 后端仍然不可用');
+            return false;
+        }
+    }
+
+    /**
      * 导出localStorage数据
      */
     exportLocalData() {

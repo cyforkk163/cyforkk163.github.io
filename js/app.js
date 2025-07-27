@@ -67,6 +67,9 @@ class App {
         
         // 表单验证
         this.setupFormValidation();
+        
+        // 数据同步按钮
+        this.setupSyncButton();
     }
 
     /**
@@ -555,6 +558,81 @@ class App {
             } else {
                 this.showNotification('清除数据失败', 'error');
             }
+        }
+    }
+
+    /**
+     * 设置数据同步按钮
+     */
+    setupSyncButton() {
+        const syncBtn = document.getElementById('sync-btn');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', () => this.handleSyncData());
+        }
+    }
+
+    /**
+     * 处理数据同步
+     */
+    async handleSyncData() {
+        const syncBtn = document.getElementById('sync-btn');
+        if (!syncBtn) return;
+
+        // 检查是否已登录
+        if (!window.authManager || !window.authManager.isLoggedIn()) {
+            this.showNotification('请先登录再同步数据', 'warning');
+            return;
+        }
+
+        // 设置同步状态
+        this.setSyncButtonState('syncing');
+
+        try {
+            // 检查后端连接
+            if (storage.useLocalStorage) {
+                // 尝试重新连接
+                const reconnected = await storage.forceReconnect();
+                if (!reconnected) {
+                    throw new Error('无法连接到数据库，请检查网络和后端服务');
+                }
+            }
+
+            // 执行同步
+            const success = await storage.syncFromDatabase(true);
+            
+            if (success) {
+                // 重新加载所有数据到界面
+                this.loadInitialData();
+                this.showNotification('数据同步成功', 'success');
+            } else {
+                this.showNotification('用户取消同步', 'info');
+            }
+
+        } catch (error) {
+            console.error('同步失败:', error);
+            this.showNotification(`同步失败: ${error.message}`, 'error');
+        } finally {
+            // 恢复按钮状态
+            this.setSyncButtonState('idle');
+        }
+    }
+
+    /**
+     * 设置同步按钮状态
+     * @param {string} state 状态：'idle' | 'syncing'
+     */
+    setSyncButtonState(state) {
+        const syncBtn = document.getElementById('sync-btn');
+        if (!syncBtn) return;
+
+        if (state === 'syncing') {
+            syncBtn.disabled = true;
+            syncBtn.classList.add('syncing');
+            syncBtn.innerHTML = '🔄 同步中...';
+        } else {
+            syncBtn.disabled = false;
+            syncBtn.classList.remove('syncing');
+            syncBtn.innerHTML = '🔄 同步数据';
         }
     }
 

@@ -73,6 +73,32 @@ body {
     color: var(--gray-600);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#sync-btn {
+    font-size: 14px;
+    padding: 10px 16px;
+}
+
+#sync-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#sync-btn.syncing {
+    background: var(--warning-color);
+}
+
 /* 主内容区域 */
 .app-main {
     background: var(--white);
@@ -900,6 +926,23 @@ body {
         flex-direction: column;
         gap: 16px;
         text-align: center;
+    }
+
+    .header-actions {
+        flex-direction: column-reverse;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .user-info {
+        justify-content: center;
+    }
+
+    #sync-btn {
+        padding: 12px 20px;
+        font-size: 16px;
+        width: 100%;
+        max-width: 200px;
     }
     
     .task-options {
