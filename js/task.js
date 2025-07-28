@@ -70,6 +70,50 @@ class TaskManager {
         return date.toISOString();
     }
 
+    /**
+     * 处理datetime-local输入的值，保持本地时间
+     * @param {string} dateTimeLocalValue datetime-local输入的值
+     * @returns {string|null} ISO格式的本地时间字符串
+     */
+    processDateTimeLocal(dateTimeLocalValue) {
+        if (!dateTimeLocalValue) return null;
+        
+        // datetime-local的值格式: "2025-07-28T22:16"
+        // 在中国（UTC+8），需要正确处理时区
+        
+        // 将datetime-local值解析为本地时间
+        const year = parseInt(dateTimeLocalValue.substr(0, 4));
+        const month = parseInt(dateTimeLocalValue.substr(5, 2)) - 1; // 月份从0开始
+        const day = parseInt(dateTimeLocalValue.substr(8, 2));
+        const hour = parseInt(dateTimeLocalValue.substr(11, 2));
+        const minute = parseInt(dateTimeLocalValue.substr(14, 2));
+        
+        // 创建本地时间的Date对象
+        const localDate = new Date(year, month, day, hour, minute);
+        
+        return localDate.toISOString();
+    }
+
+    /**
+     * 将ISO时间字符串转换为datetime-local格式（本地时间）
+     * @param {string} isoString ISO格式的时间字符串
+     * @returns {string} datetime-local格式的字符串
+     */
+    formatForDateTimeLocal(isoString) {
+        if (!isoString) return '';
+        
+        const date = new Date(isoString);
+        
+        // 转换为本地时间的YYYY-MM-DDTHH:MM格式
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
 
 
     /**
@@ -84,7 +128,7 @@ class TaskManager {
             id: this.generateId(),
             title: taskData.title.trim(),
             description: taskData.description ? taskData.description.trim() : '',
-            deadline: taskData.deadline || null,
+            deadline: this.processDateTimeLocal(taskData.deadline),
             goalId: taskData.goalId || null,
             status: this.STATUS.PENDING,
             createdAt: now,
@@ -295,12 +339,17 @@ class TaskManager {
 
         this.tasks.forEach(task => {
             if (task.deadline && 
-                task.status === this.STATUS.PENDING && 
-                new Date(task.deadline) < now) {
+                task.status === this.STATUS.PENDING) {
                 
-                task.status = this.STATUS.EXPIRED;
-                storage.saveTask(task);
-                hasExpired = true;
+                const deadline = new Date(task.deadline);
+                // 添加5分钟缓冲时间，避免刚创建的任务被立即标记为过期
+                const bufferTime = 5 * 60 * 1000; // 5分钟
+                
+                if (deadline.getTime() + bufferTime < now.getTime()) {
+                    task.status = this.STATUS.EXPIRED;
+                    storage.saveTask(task);
+                    hasExpired = true;
+                }
             }
         });
 
@@ -608,7 +657,7 @@ class TaskManager {
                 <div class="form-group">
                     <label for="edit-task-deadline">截止时间：</label>
                     <input type="datetime-local" id="edit-task-deadline" 
-                           value="${task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : ''}">
+                           value="${this.formatForDateTimeLocal(task.deadline)}">
                 </div>
                 
                 <div class="form-group">
@@ -671,7 +720,7 @@ class TaskManager {
         const taskId = document.getElementById('edit-task-id').value;
         const title = document.getElementById('edit-task-title').value.trim();
         const description = document.getElementById('edit-task-description').value.trim();
-        const deadline = document.getElementById('edit-task-deadline').value || null;
+        const deadline = this.processDateTimeLocal(document.getElementById('edit-task-deadline').value);
         const goalId = document.getElementById('edit-task-goal').value || null;
         const priority = document.getElementById('edit-task-priority').value || 'medium';
         
@@ -679,7 +728,7 @@ class TaskManager {
         const repeatType = document.getElementById('edit-task-repeat').value || 'none';
         const repeatInterval = document.getElementById('edit-task-repeat-interval')?.value ? 
             parseInt(document.getElementById('edit-task-repeat-interval').value) || 1 : 1;
-        const repeatEndDate = document.getElementById('edit-task-repeat-end')?.value || null;
+        const repeatEndDate = this.processDateTimeLocal(document.getElementById('edit-task-repeat-end')?.value);
 
         if (!title) {
             this.showNotification('请输入任务标题', 'error');
@@ -939,7 +988,7 @@ class TaskManager {
         
         const title = document.getElementById('task-title').value.trim();
         const description = document.getElementById('task-description').value.trim();
-        const deadline = document.getElementById('task-deadline').value || null;
+        const deadline = this.processDateTimeLocal(document.getElementById('task-deadline').value);
         const goalId = document.getElementById('task-goal').value || null;
         const priority = document.getElementById('task-priority').value || 'medium';
         
@@ -947,7 +996,7 @@ class TaskManager {
         const repeatType = document.getElementById('task-repeat').value || 'none';
         const repeatInterval = repeatType === 'custom' ? 
             parseInt(document.getElementById('task-repeat-interval').value) || 1 : 1;
-        const repeatEndDate = document.getElementById('task-repeat-end').value || null;
+        const repeatEndDate = this.processDateTimeLocal(document.getElementById('task-repeat-end').value);
 
         if (!title) {
             this.showNotification('请输入任务标题', 'error');
