@@ -79,8 +79,13 @@ class TaskManager {
         // 如果没有输入值，返回null
         if (!dateTimeLocalValue) return null;
         
-        // datetime-local的值已经是本地时间格式，直接返回
-        // 不做任何时区转换，保持用户输入的时间
+        // datetime-local的值格式: "2025-07-28T09:43"
+        // 添加秒数和毫秒数，但不添加时区标识
+        // 这样保存的就是本地时间，不会被误解为UTC时间
+        if (dateTimeLocalValue.length === 16) { // YYYY-MM-DDTHH:MM
+            return dateTimeLocalValue + ':00'; // 变成 YYYY-MM-DDTHH:MM:SS
+        }
+        
         return dateTimeLocalValue;
     }
 
@@ -338,7 +343,22 @@ class TaskManager {
             if (task.deadline && 
                 task.status === this.STATUS.PENDING) {
                 
-                const deadline = new Date(task.deadline);
+                let deadline;
+                // 处理我们的本地时间格式
+                if (typeof task.deadline === 'string' && task.deadline.includes('T') && !task.deadline.includes('Z')) {
+                    // 手动解析本地时间，避免时区问题
+                    const parts = task.deadline.split('T');
+                    const datePart = parts[0]; // YYYY-MM-DD
+                    const timePart = parts[1]; // HH:MM:SS 或 HH:MM
+                    
+                    const [year, month, day] = datePart.split('-');
+                    const [hour, minute] = timePart.split(':');
+                    
+                    deadline = new Date(year, month - 1, day, hour, minute);
+                } else {
+                    deadline = new Date(task.deadline);
+                }
+                
                 // 添加5分钟缓冲时间，避免刚创建的任务被立即标记为过期
                 const bufferTime = 5 * 60 * 1000; // 5分钟
                 
@@ -833,6 +853,22 @@ class TaskManager {
      * @returns {string} 格式化的日期
      */
     formatDate(dateString) {
+        if (!dateString) return '';
+        
+        // 如果是我们的本地时间格式 (YYYY-MM-DDTHH:MM:SS 或 YYYY-MM-DDTHH:MM)
+        if (typeof dateString === 'string' && dateString.includes('T') && !dateString.includes('Z')) {
+            // 手动解析，避免时区转换
+            const parts = dateString.split('T');
+            const datePart = parts[0]; // YYYY-MM-DD
+            const timePart = parts[1]; // HH:MM:SS 或 HH:MM
+            
+            const [year, month, day] = datePart.split('-');
+            const [hour, minute] = timePart.split(':');
+            
+            return `${year}/${month}/${day} ${hour}:${minute}:00`;
+        }
+        
+        // 其他格式使用默认处理
         const date = new Date(dateString);
         return date.toLocaleString('zh-CN');
     }
