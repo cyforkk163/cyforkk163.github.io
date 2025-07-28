@@ -76,22 +76,12 @@ class TaskManager {
      * @returns {string|null} ISO格式的本地时间字符串
      */
     processDateTimeLocal(dateTimeLocalValue) {
+        // 如果没有输入值，返回null
         if (!dateTimeLocalValue) return null;
         
-        // datetime-local的值格式: "2025-07-28T22:16"
-        // 在中国（UTC+8），需要正确处理时区
-        
-        // 将datetime-local值解析为本地时间
-        const year = parseInt(dateTimeLocalValue.substr(0, 4));
-        const month = parseInt(dateTimeLocalValue.substr(5, 2)) - 1; // 月份从0开始
-        const day = parseInt(dateTimeLocalValue.substr(8, 2));
-        const hour = parseInt(dateTimeLocalValue.substr(11, 2));
-        const minute = parseInt(dateTimeLocalValue.substr(14, 2));
-        
-        // 创建本地时间的Date对象
-        const localDate = new Date(year, month, day, hour, minute);
-        
-        return localDate.toISOString();
+        // datetime-local的值已经是本地时间格式，直接返回
+        // 不做任何时区转换，保持用户输入的时间
+        return dateTimeLocalValue;
     }
 
     /**
@@ -99,10 +89,17 @@ class TaskManager {
      * @param {string} isoString ISO格式的时间字符串
      * @returns {string} datetime-local格式的字符串
      */
-    formatForDateTimeLocal(isoString) {
-        if (!isoString) return '';
+    formatForDateTimeLocal(dateTimeValue) {
+        if (!dateTimeValue) return '';
         
-        const date = new Date(isoString);
+        // 如果已经是datetime-local格式（YYYY-MM-DDTHH:MM），直接返回
+        if (typeof dateTimeValue === 'string' && dateTimeValue.includes('T') && !dateTimeValue.includes('Z')) {
+            // 确保格式正确：YYYY-MM-DDTHH:MM
+            return dateTimeValue.slice(0, 16);
+        }
+        
+        // 如果是ISO格式，转换为本地时间
+        const date = new Date(dateTimeValue);
         
         // 转换为本地时间的YYYY-MM-DDTHH:MM格式
         const year = date.getFullYear();
