@@ -35,6 +35,20 @@ function formatDateForMySQL(dateString) {
     if (!dateString) return null;
     
     try {
+        // 如果是我们的本地时间格式（YYYY-MM-DDTHH:MM:SS 或 YYYY-MM-DDTHH:MM）
+        if (typeof dateString === 'string' && dateString.includes('T') && !dateString.includes('Z')) {
+            // 直接转换格式，不进行时区转换
+            let mysqlFormat = dateString.replace('T', ' ');
+            
+            // 确保有秒数
+            if (mysqlFormat.length === 16) { // YYYY-MM-DD HH:MM
+                mysqlFormat += ':00';
+            }
+            
+            return mysqlFormat;
+        }
+        
+        // 其他格式（带时区的ISO字符串等）使用原来的逻辑
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return null;
         
