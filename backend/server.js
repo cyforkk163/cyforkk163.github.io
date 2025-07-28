@@ -30,6 +30,22 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// 时间格式转换函数
+function formatDateForMySQL(dateString) {
+    if (!dateString) return null;
+    
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return null;
+        
+        // 转换为MySQL TIMESTAMP格式: YYYY-MM-DD HH:MM:SS
+        return date.toISOString().slice(0, 19).replace('T', ' ');
+    } catch (error) {
+        console.error('日期格式转换错误:', error);
+        return null;
+    }
+}
+
 // 数据库连接池
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
@@ -327,10 +343,10 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
 
         await pool.execute(sql, [
             id, req.user.id, goal_id || null, title, description || '', 
-            deadline || null, priority || 'medium',
+            formatDateForMySQL(deadline), priority || 'medium',
             is_repeat_template || false, parent_task_id || null,
             repeat_type || 'none', repeat_interval || 1,
-            repeat_end_date || null
+            formatDateForMySQL(repeat_end_date)
         ]);
 
         // 获取创建的任务
@@ -364,7 +380,12 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
         Object.keys(updates).forEach(key => {
             if (allowedFields.includes(key)) {
                 updateFields.push(`${key} = ?`);
-                values.push(updates[key]);
+                // 对时间字段进行格式转换
+                if (key === 'deadline' || key === 'repeat_end_date' || key === 'completed_at') {
+                    values.push(formatDateForMySQL(updates[key]));
+                } else {
+                    values.push(updates[key]);
+                }
             }
         });
         
@@ -471,8 +492,8 @@ app.post('/api/goals', async (req, res) => {
         `;
 
         await pool.execute(sql, [
-            id, title, description || '', 
-            target_date || null, category || 'personal'
+            id, title, description || '', formatDateForMySQL(target_date), 
+            category || 'personal'
         ]);
 
         // 获取创建的目标
@@ -504,7 +525,12 @@ app.put('/api/goals/:id', async (req, res) => {
         Object.keys(updates).forEach(key => {
             if (allowedFields.includes(key)) {
                 updateFields.push(`${key} = ?`);
-                values.push(updates[key]);
+                // 对时间字段进行格式转换
+                if (key === 'target_date' || key === 'completed_at') {
+                    values.push(formatDateForMySQL(updates[key]));
+                } else {
+                    values.push(updates[key]);
+                }
             }
         });
         
